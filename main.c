@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <ctype.h>
 #include <sys/stat.h>
 #define PNG_sRGB_PROFILE_CHECKS 1
 #include <png.h>
@@ -359,7 +360,25 @@ main(int argc, char *argv[]) {
 
   int result = invoke_session(graph, "input", "MobilenetV1/Predictions/Reshape_1", image);
   if (result < 0) goto err;
-  printf("result is %i\n", result);
+
+  FILE *fp = fopen("labels.txt", "rb");
+  if (fp) {
+    char buf[BUFSIZ];
+    while (!feof(fp)) {
+      if (fgets(buf, sizeof(buf), fp) == NULL) break;
+      for (i = strlen(buf)-1; i >= 0 && isspace(buf[i]); i--);
+      buf[i+1] = '\0';
+      for (i = 0; buf[i] != ':'; i++);
+      buf[i] = '\0';
+      int kind = atoi(buf);
+      if (kind != result) {
+        continue;
+      }
+      printf("result is \"%s\"\n", buf+i+1);
+      break;
+    }
+  }
+  fclose(fp);
 
   if (image) free(image);
   if (status) TF_DeleteStatus(status);
